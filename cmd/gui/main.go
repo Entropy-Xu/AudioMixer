@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 
@@ -8,13 +9,14 @@ import (
 )
 
 func main() {
-	// Set Fyne to use system font for better CJK (Chinese/Japanese/Korean) support
-	// This environment variable tells Fyne to use the system's font rendering
-	if os.Getenv("FYNE_FONT") == "" {
-		// On macOS, use PingFang SC for Chinese support
-		if _, err := os.Stat("/System/Library/Fonts/PingFang.ttc"); err == nil {
-			os.Setenv("FYNE_FONT", "/System/Library/Fonts/PingFang.ttc")
-		}
+	// Command line flags
+	fontPath := flag.String("font", "", "Path to custom font file (TTF/TTC) for better CJK support")
+	flag.Parse()
+
+	// Setup font for CJK (Chinese/Japanese/Korean) support
+	if err := gui.SetupFont(*fontPath); err != nil {
+		// Non-fatal error, just print warning
+		fmt.Fprintf(os.Stderr, "Font setup: %v\n", err)
 	}
 
 	app, err := gui.NewApp()

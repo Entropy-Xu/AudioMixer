@@ -85,7 +85,19 @@ go build -o audio-mixer-gui ./cmd/gui
 ./audio-mixer-gui
 ```
 
-3. 在图形界面中:
+3. 自定义字体(可选,用于更好的中文显示):
+```bash
+# 使用自定义字体文件
+./audio-mixer-gui -font /path/to/your/font.ttf
+
+# macOS 使用苹方字体
+./audio-mixer-gui -font /System/Library/Fonts/PingFang.ttc
+
+# 或设置环境变量
+FYNE_FONT=/System/Library/Fonts/PingFang.ttc ./audio-mixer-gui
+```
+
+4. 在图形界面中:
    - 从下拉菜单选择输入/输出设备
    - 使用滑块调节音量(0-200%)
    - 点击"Start Mixer"开始混音
@@ -287,6 +299,34 @@ if output[i] > 0.9 {
 - 授予麦克风权限: 系统偏好设置 → 安全性与隐私 → 麦克风
 - 重启程序
 - 检查虚拟设备是否正确安装
+
+### 问题: GUI中文显示为方块
+
+这是字体不支持中文字符导致的,可以通过以下方式解决:
+
+**方法1: 使用命令行参数指定字体**
+```bash
+./audio-mixer-gui -font /System/Library/Fonts/PingFang.ttc
+```
+
+**方法2: 设置环境变量**
+```bash
+export FYNE_FONT=/System/Library/Fonts/PingFang.ttc
+./audio-mixer-gui
+```
+
+**方法3: 下载并使用开源中文字体**
+```bash
+# 下载思源黑体
+wget https://github.com/adobe-fonts/source-han-sans/releases/download/2.004R/SourceHanSansSC.zip
+unzip SourceHanSansSC.zip
+./audio-mixer-gui -font ./SourceHanSansSC/SourceHanSansSC-Regular.otf
+```
+
+**可用的系统字体路径(macOS):**
+- 苹方: `/System/Library/Fonts/PingFang.ttc`
+- 黑体: `/System/Library/Fonts/STHeiti Light.ttc`
+- 华文黑体: `/System/Library/Fonts/Hiragino Sans GB.ttc`
 
 ## 开发计划
 
