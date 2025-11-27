@@ -143,30 +143,52 @@ func (a *App) buildDeviceSection() fyne.CanvasObject {
 		outputNames[i] = fmt.Sprintf("[%d] %s", dev.Index, dev.Name)
 	}
 
+	// Helper function to find device name by index
+	findDeviceName := func(deviceIndex int, devices []*audio.DeviceInfo, names []string) string {
+		for i, dev := range devices {
+			if dev.Index == deviceIndex {
+				return names[i]
+			}
+		}
+		return ""
+	}
+
 	// Input 1 select
-	a.input1Select = widget.NewSelect(inputNames, func(value string) {
+	a.input1Select = widget.NewSelect(inputNames, nil)
+	a.input1Select.OnChanged = func(value string) {
 		a.updateConfig()
-	})
-	if a.cfg.Input1DeviceIndex >= 0 && a.cfg.Input1DeviceIndex < len(inputNames) {
-		a.input1Select.SetSelected(inputNames[a.cfg.Input1DeviceIndex])
+	}
+	if a.cfg.Input1DeviceIndex >= 0 {
+		selectedName := findDeviceName(a.cfg.Input1DeviceIndex, inputDevices, inputNames)
+		if selectedName != "" {
+			a.input1Select.SetSelected(selectedName)
+		}
 	}
 
 	// Input 2 select
-	a.input2Select = widget.NewSelect(append([]string{"<None>"}, inputNames...), func(value string) {
+	a.input2Select = widget.NewSelect(append([]string{"<None>"}, inputNames...), nil)
+	a.input2Select.OnChanged = func(value string) {
 		a.updateConfig()
-	})
-	if a.cfg.Input2DeviceIndex >= 0 && a.cfg.Input2DeviceIndex < len(inputNames) {
-		a.input2Select.SetSelected(inputNames[a.cfg.Input2DeviceIndex])
+	}
+	if a.cfg.Input2DeviceIndex >= 0 {
+		selectedName := findDeviceName(a.cfg.Input2DeviceIndex, inputDevices, inputNames)
+		if selectedName != "" {
+			a.input2Select.SetSelected(selectedName)
+		}
 	} else {
 		a.input2Select.SetSelected("<None>")
 	}
 
 	// Output select
-	a.outputSelect = widget.NewSelect(outputNames, func(value string) {
+	a.outputSelect = widget.NewSelect(outputNames, nil)
+	a.outputSelect.OnChanged = func(value string) {
 		a.updateConfig()
-	})
-	if a.cfg.OutputDeviceIndex >= 0 && a.cfg.OutputDeviceIndex < len(outputNames) {
-		a.outputSelect.SetSelected(outputNames[a.cfg.OutputDeviceIndex])
+	}
+	if a.cfg.OutputDeviceIndex >= 0 {
+		selectedName := findDeviceName(a.cfg.OutputDeviceIndex, outputDevices, outputNames)
+		if selectedName != "" {
+			a.outputSelect.SetSelected(selectedName)
+		}
 	}
 
 	return container.NewVBox(
