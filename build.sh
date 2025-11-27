@@ -17,7 +17,12 @@ echo "✅ CLI version built: ./audio-mixer"
 
 echo ""
 echo "🖥️  Building GUI version..."
-go build -o audio-mixer-gui ./cmd/gui
+# Suppress duplicate library warnings on macOS
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    go build -ldflags="-w -s" -o audio-mixer-gui ./cmd/gui 2>&1 | grep -v "ignoring duplicate libraries" || true
+else
+    go build -ldflags="-w -s" -o audio-mixer-gui ./cmd/gui
+fi
 echo "✅ GUI version built: ./audio-mixer-gui"
 
 echo ""
