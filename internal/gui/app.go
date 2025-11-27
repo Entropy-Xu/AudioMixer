@@ -2,6 +2,7 @@ package gui
 
 import (
 	"fmt"
+	"image/color"
 	"os"
 	"strings"
 	"time"
@@ -586,7 +587,7 @@ func (a *App) cleanup() {
 // customTheme provides a theme with better font fallback for Unicode characters
 type customTheme struct{}
 
-func (c *customTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) fyne.Color {
+func (c *customTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color.Color {
 	return theme.DefaultTheme().Color(name, variant)
 }
 
