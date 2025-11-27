@@ -2,6 +2,8 @@ package audio
 
 import (
 	"fmt"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/gordonklaus/portaudio"
 )
@@ -77,9 +79,16 @@ func (dm *DeviceManager) ListDevices() ([]*DeviceInfo, error) {
 			hostAPIName = dev.HostApi.Name
 		}
 
+		// Ensure device name is valid UTF-8
+		deviceName := dev.Name
+		if !isValidUTF8(deviceName) {
+			// If not valid UTF-8, try to sanitize it
+			deviceName = sanitizeString(deviceName)
+		}
+
 		info := &DeviceInfo{
 			Index:              i,
-			Name:               dev.Name,
+			Name:               deviceName,
 			MaxInputChannels:   dev.MaxInputChannels,
 			MaxOutputChannels:  dev.MaxOutputChannels,
 			DefaultSampleRate:  dev.DefaultSampleRate,
@@ -171,4 +180,27 @@ func (dm *DeviceManager) GetDefaultOutputDevice() (*portaudio.DeviceInfo, error)
 	}
 
 	return dev, nil
+}
+
+// isValidUTF8 checks if a string is valid UTF-8
+func isValidUTF8(s string) bool {
+	return utf8.ValidString(s)
+}
+
+// sanitizeString removes or replaces invalid UTF-8 characters
+func sanitizeString(s string) string {
+	if utf8.ValidString(s) {
+		return s
+	}
+
+	// Replace invalid UTF-8 sequences with replacement character
+	var builder strings.Builder
+	for _, r := range s {
+		if r == utf8.RuneError {
+			builder.WriteRune('?')
+		} else {
+			builder.WriteRune(r)
+		}
+	}
+	return builder.String()
 }
