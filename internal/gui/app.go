@@ -3,6 +3,7 @@ package gui
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -42,6 +43,8 @@ type App struct {
 	input2Meter   *widget.ProgressBar
 	outputMeter   *widget.ProgressBar
 	latencyLabel  *widget.Label
+	fontSelect    *widget.Select
+	fontStatus    *widget.Label
 
 	// State
 	isRunning bool
@@ -110,6 +113,9 @@ func (a *App) buildUI() fyne.CanvasObject {
 	// Control buttons
 	controlSection := a.buildControlSection()
 
+	// Font settings section
+	fontSection := a.buildFontSection()
+
 	// Status bar
 	a.statusLabel = widget.NewLabel("Ready")
 
@@ -124,6 +130,8 @@ func (a *App) buildUI() fyne.CanvasObject {
 		metersSection,
 		widget.NewSeparator(),
 		controlSection,
+		widget.NewSeparator(),
+		fontSection,
 		widget.NewSeparator(),
 		a.statusLabel,
 	)
@@ -302,6 +310,110 @@ func (a *App) buildControlSection() fyne.CanvasObject {
 		a.startButton,
 		a.stopButton,
 	)
+}
+
+// buildFontSection creates font selection UI
+func (a *App) buildFontSection() fyne.CanvasObject {
+	// Get available fonts
+	fontPaths := GetDefaultFontPaths()
+	fontOptions := []string{"Default (Built-in)"}
+	fontMap := make(map[string]string)
+
+	fontMap["Default (Built-in)"] = ""
+
+	// Check which fonts are available
+	for _, path := range fontPaths {
+		if _, err := os.Stat(path); err == nil {
+			// Extract friendly name from path
+			name := getFriendlyFontName(path)
+			fontOptions = append(fontOptions, name)
+			fontMap[name] = path
+		}
+	}
+
+	// Create font select dropdown
+	a.fontSelect = widget.NewSelect(fontOptions, nil)
+
+	// Set current font
+	currentFont := os.Getenv("FYNE_FONT")
+	selectedOption := "Default (Built-in)"
+	for name, path := range fontMap {
+		if path == currentFont {
+			selectedOption = name
+			break
+		}
+	}
+	a.fontSelect.SetSelected(selectedOption)
+
+	// Font status label
+	a.fontStatus = widget.NewLabel("")
+	if currentFont != "" {
+		a.fontStatus.SetText(fmt.Sprintf("Current: %s", currentFont))
+	}
+
+	// Set callback after initial value
+	a.fontSelect.OnChanged = func(selected string) {
+		if selected == "" {
+			return
+		}
+
+		fontPath := fontMap[selected]
+		if err := LoadCustomFont(fontPath); err != nil {
+			a.fontStatus.SetText(fmt.Sprintf("Error: %v", err))
+			return
+		}
+
+		if fontPath == "" {
+			a.fontStatus.SetText("Using default font")
+		} else {
+			a.fontStatus.SetText(fmt.Sprintf("Loaded: %s", fontPath))
+		}
+
+		// Show restart message
+		a.statusLabel.SetText("Font changed. Please restart the app for changes to take effect.")
+	}
+
+	// Add custom font button
+	customButton := widget.NewButton("Custom Font...", func() {
+		// This would open a file dialog, but for simplicity we'll show a message
+		a.statusLabel.SetText("Use: ./audio-mixer-gui -font /path/to/font.ttf")
+	})
+
+	return container.NewVBox(
+		widget.NewLabel("Font Settings (for CJK characters)"),
+		container.New(layout.NewFormLayout(),
+			widget.NewLabel("Font:"), a.fontSelect,
+		),
+		customButton,
+		a.fontStatus,
+	)
+}
+
+// getFriendlyFontName extracts a friendly name from font path
+func getFriendlyFontName(path string) string {
+	switch path {
+	case "/System/Library/Fonts/PingFang.ttc":
+		return "PingFang (Recommended)"
+	case "/System/Library/Fonts/STHeiti Light.ttc":
+		return "STHeiti Light"
+	case "/System/Library/Fonts/Hiragino Sans GB.ttc":
+		return "Hiragino Sans GB"
+	case "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc":
+		return "Noto Sans CJK"
+	case "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc":
+		return "Noto Sans CJK (OpenType)"
+	case "C:\\Windows\\Fonts\\msyh.ttc":
+		return "Microsoft YaHei"
+	case "C:\\Windows\\Fonts\\simsun.ttc":
+		return "SimSun"
+	default:
+		// Extract filename
+		parts := strings.Split(path, "/")
+		if len(parts) > 0 {
+			return parts[len(parts)-1]
+		}
+		return path
+	}
 }
 
 // startMixer starts the audio mixer
