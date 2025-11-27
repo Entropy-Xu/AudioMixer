@@ -110,7 +110,7 @@ func (a *App) buildUI() fyne.CanvasObject {
 
 	// Main layout
 	content := container.NewVBox(
-		widget.NewLabel("Audio Mixer Control Panel"),
+		widget.NewLabel("Audio Mixer"),
 		widget.NewSeparator(),
 		deviceSection,
 		widget.NewSeparator(),
@@ -202,10 +202,10 @@ func (a *App) buildDeviceSection() fyne.CanvasObject {
 	}
 
 	return container.NewVBox(
-		widget.NewLabel("Device Selection"),
+		widget.NewLabel("Devices"),
 		container.New(layout.NewFormLayout(),
-			widget.NewLabel("Input 1 (Microphone):"), a.input1Select,
-			widget.NewLabel("Input 2 (App Audio):"), a.input2Select,
+			widget.NewLabel("Input 1 (Mic):"), a.input1Select,
+			widget.NewLabel("Input 2 (App):"), a.input2Select,
 			widget.NewLabel("Output:"), a.outputSelect,
 		),
 	)
@@ -214,12 +214,12 @@ func (a *App) buildDeviceSection() fyne.CanvasObject {
 // buildVolumeSection creates volume control UI
 func (a *App) buildVolumeSection() fyne.CanvasObject {
 	// Input 1 gain
-	a.input1Label = widget.NewLabel(fmt.Sprintf("Input 1 Gain: %.2f", a.cfg.Input1Gain))
+	a.input1Label = widget.NewLabel(fmt.Sprintf("Input 1: %.2f", a.cfg.Input1Gain))
 	a.input1Slider = widget.NewSlider(0, 2.0)
 	a.input1Slider.Value = float64(a.cfg.Input1Gain)
 	a.input1Slider.Step = 0.01
 	a.input1Slider.OnChanged = func(value float64) {
-		a.input1Label.SetText(fmt.Sprintf("Input 1 Gain: %.2f", value))
+		a.input1Label.SetText(fmt.Sprintf("Input 1: %.2f", value))
 		a.cfg.Input1Gain = float32(value)
 		if a.isRunning && a.mixer != nil {
 			a.mixer.SetInput1Gain(float32(value))
@@ -227,12 +227,12 @@ func (a *App) buildVolumeSection() fyne.CanvasObject {
 	}
 
 	// Input 2 gain
-	a.input2Label = widget.NewLabel(fmt.Sprintf("Input 2 Gain: %.2f", a.cfg.Input2Gain))
+	a.input2Label = widget.NewLabel(fmt.Sprintf("Input 2: %.2f", a.cfg.Input2Gain))
 	a.input2Slider = widget.NewSlider(0, 2.0)
 	a.input2Slider.Value = float64(a.cfg.Input2Gain)
 	a.input2Slider.Step = 0.01
 	a.input2Slider.OnChanged = func(value float64) {
-		a.input2Label.SetText(fmt.Sprintf("Input 2 Gain: %.2f", value))
+		a.input2Label.SetText(fmt.Sprintf("Input 2: %.2f", value))
 		a.cfg.Input2Gain = float32(value)
 		if a.isRunning && a.mixer != nil {
 			a.mixer.SetInput2Gain(float32(value))
@@ -240,12 +240,12 @@ func (a *App) buildVolumeSection() fyne.CanvasObject {
 	}
 
 	// Master gain
-	a.masterLabel = widget.NewLabel(fmt.Sprintf("Master Gain: %.2f", a.cfg.MasterGain))
+	a.masterLabel = widget.NewLabel(fmt.Sprintf("Master: %.2f", a.cfg.MasterGain))
 	a.masterSlider = widget.NewSlider(0, 2.0)
 	a.masterSlider.Value = float64(a.cfg.MasterGain)
 	a.masterSlider.Step = 0.01
 	a.masterSlider.OnChanged = func(value float64) {
-		a.masterLabel.SetText(fmt.Sprintf("Master Gain: %.2f", value))
+		a.masterLabel.SetText(fmt.Sprintf("Master: %.2f", value))
 		a.cfg.MasterGain = float32(value)
 		if a.isRunning && a.mixer != nil {
 			a.mixer.SetMasterGain(float32(value))
@@ -253,7 +253,7 @@ func (a *App) buildVolumeSection() fyne.CanvasObject {
 	}
 
 	return container.NewVBox(
-		widget.NewLabel("Volume Controls"),
+		widget.NewLabel("Volume (0.00-2.00)"),
 		a.input1Label,
 		a.input1Slider,
 		a.input2Label,
@@ -271,12 +271,12 @@ func (a *App) buildMetersSection() fyne.CanvasObject {
 	a.latencyLabel = widget.NewLabel("Latency: 0ms")
 
 	return container.NewVBox(
-		widget.NewLabel("Audio Levels"),
-		widget.NewLabel("Input 1:"),
+		widget.NewLabel("Levels"),
+		widget.NewLabel("In1:"),
 		a.input1Meter,
-		widget.NewLabel("Input 2:"),
+		widget.NewLabel("In2:"),
 		a.input2Meter,
-		widget.NewLabel("Output:"),
+		widget.NewLabel("Out:"),
 		a.outputMeter,
 		a.latencyLabel,
 	)
