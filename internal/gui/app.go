@@ -153,23 +153,24 @@ func (a *App) buildDeviceSection() fyne.CanvasObject {
 		return ""
 	}
 
-	// Input 1 select
+	// Input 1 select - create and set initial value
 	a.input1Select = widget.NewSelect(inputNames, nil)
-	a.input1Select.OnChanged = func(value string) {
-		a.updateConfig()
-	}
 	if a.cfg.Input1DeviceIndex >= 0 {
 		selectedName := findDeviceName(a.cfg.Input1DeviceIndex, inputDevices, inputNames)
 		if selectedName != "" {
 			a.input1Select.SetSelected(selectedName)
 		}
 	}
-
-	// Input 2 select
-	a.input2Select = widget.NewSelect(append([]string{"<None>"}, inputNames...), nil)
-	a.input2Select.OnChanged = func(value string) {
-		a.updateConfig()
+	// Set callback after initial value is set
+	a.input1Select.OnChanged = func(value string) {
+		if value != "" {
+			a.updateConfig()
+		}
 	}
+
+	// Input 2 select - create and set initial value
+	input2Options := append([]string{"<None>"}, inputNames...)
+	a.input2Select = widget.NewSelect(input2Options, nil)
 	if a.cfg.Input2DeviceIndex >= 0 {
 		selectedName := findDeviceName(a.cfg.Input2DeviceIndex, inputDevices, inputNames)
 		if selectedName != "" {
@@ -178,16 +179,25 @@ func (a *App) buildDeviceSection() fyne.CanvasObject {
 	} else {
 		a.input2Select.SetSelected("<None>")
 	}
-
-	// Output select
-	a.outputSelect = widget.NewSelect(outputNames, nil)
-	a.outputSelect.OnChanged = func(value string) {
-		a.updateConfig()
+	// Set callback after initial value is set
+	a.input2Select.OnChanged = func(value string) {
+		if value != "" {
+			a.updateConfig()
+		}
 	}
+
+	// Output select - create and set initial value
+	a.outputSelect = widget.NewSelect(outputNames, nil)
 	if a.cfg.OutputDeviceIndex >= 0 {
 		selectedName := findDeviceName(a.cfg.OutputDeviceIndex, outputDevices, outputNames)
 		if selectedName != "" {
 			a.outputSelect.SetSelected(selectedName)
+		}
+	}
+	// Set callback after initial value is set
+	a.outputSelect.OnChanged = func(value string) {
+		if value != "" {
+			a.updateConfig()
 		}
 	}
 
@@ -422,21 +432,23 @@ func (a *App) updateMeters() {
 // updateConfig updates the config from UI selections
 func (a *App) updateConfig() {
 	// Parse device indices from selection
-	if a.input1Select.Selected != "" && a.input1Select.Selected != "<None>" {
+	if a.input1Select != nil && a.input1Select.Selected != "" && a.input1Select.Selected != "<None>" {
 		var idx int
 		fmt.Sscanf(a.input1Select.Selected, "[%d]", &idx)
 		a.cfg.Input1DeviceIndex = idx
 	}
 
-	if a.input2Select.Selected != "" && a.input2Select.Selected != "<None>" {
-		var idx int
-		fmt.Sscanf(a.input2Select.Selected, "[%d]", &idx)
-		a.cfg.Input2DeviceIndex = idx
-	} else {
-		a.cfg.Input2DeviceIndex = -2
+	if a.input2Select != nil {
+		if a.input2Select.Selected != "" && a.input2Select.Selected != "<None>" {
+			var idx int
+			fmt.Sscanf(a.input2Select.Selected, "[%d]", &idx)
+			a.cfg.Input2DeviceIndex = idx
+		} else {
+			a.cfg.Input2DeviceIndex = -2
+		}
 	}
 
-	if a.outputSelect.Selected != "" {
+	if a.outputSelect != nil && a.outputSelect.Selected != "" {
 		var idx int
 		fmt.Sscanf(a.outputSelect.Selected, "[%d]", &idx)
 		a.cfg.OutputDeviceIndex = idx
