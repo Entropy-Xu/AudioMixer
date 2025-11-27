@@ -15,9 +15,13 @@ type Config struct {
 	Channels     int     `json:"channels"`
 
 	// Device indices
-	Input1DeviceIndex int `json:"input1_device_index"` // Microphone
-	Input2DeviceIndex int `json:"input2_device_index"` // Application audio
-	OutputDeviceIndex int `json:"output_device_index"`
+	Input1DeviceIndex int `json:"input1_device_index"` // Microphone/Line input
+	Input2DeviceIndex int `json:"input2_device_index"` // System audio (loopback device)
+	OutputDeviceIndex int `json:"output_device_index"` // Virtual output (BlackHole, etc.)
+
+	// Virtual device settings
+	UseVirtualOutput bool   `json:"use_virtual_output"` // Use virtual device for output
+	LoopbackDeviceName string `json:"loopback_device_name"` // Name of loopback device
 
 	// Volume settings (0.0 to 2.0)
 	Input1Gain float32 `json:"input1_gain"`
@@ -33,18 +37,20 @@ type Config struct {
 // DefaultConfig returns a configuration with default values
 func DefaultConfig() *Config {
 	return &Config{
-		SampleRate:        48000,
-		BufferSize:        512,
-		Channels:          2,
-		Input1DeviceIndex: -1, // -1 means use default device
-		Input2DeviceIndex: -1,
-		OutputDeviceIndex: -1,
-		Input1Gain:        1.0,
-		Input2Gain:        1.0,
-		MasterGain:        1.0,
-		WindowWidth:       800,
-		WindowHeight:      600,
-		StartMinimized:    false,
+		SampleRate:         48000,
+		BufferSize:         512,
+		Channels:           2,
+		Input1DeviceIndex:  -1, // -1 means use default device
+		Input2DeviceIndex:  -1, // Will auto-detect loopback device
+		OutputDeviceIndex:  -1, // Will auto-detect virtual output
+		UseVirtualOutput:   true, // Use virtual device by default
+		LoopbackDeviceName: "BlackHole", // Default to BlackHole on macOS
+		Input1Gain:         1.0,
+		Input2Gain:         1.0,
+		MasterGain:         1.0,
+		WindowWidth:        800,
+		WindowHeight:       600,
+		StartMinimized:     false,
 	}
 }
 

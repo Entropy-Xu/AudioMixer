@@ -15,24 +15,36 @@ type FontConfig struct {
 }
 
 // GetDefaultFontPaths returns a list of common font paths to try
+// Note: Fyne only supports single-font TTF/OTF files, not TTC collections
 func GetDefaultFontPaths() []string {
-	return []string{
-		// macOS system fonts (Chinese support)
-		"/System/Library/Fonts/PingFang.ttc",
-		"/System/Library/Fonts/STHeiti Light.ttc",
-		"/System/Library/Fonts/Hiragino Sans GB.ttc",
+	paths := []string{
+		// macOS - Individual font files (not collections)
+		"/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+		"/Library/Fonts/Arial Unicode.ttf",
 
 		// User fonts on macOS
 		filepath.Join(os.Getenv("HOME"), "Library/Fonts/PingFangSC-Regular.ttf"),
+		filepath.Join(os.Getenv("HOME"), "Library/Fonts/SourceHanSansSC-Regular.otf"),
+		filepath.Join(os.Getenv("HOME"), "Library/Fonts/NotoSansCJKsc-Regular.otf"),
 
-		// Common open-source fonts
-		"/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
-		"/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+		// Common open-source fonts (Linux)
+		"/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttf",
+		"/usr/share/fonts/opentype/noto/NotoSansCJKsc-Regular.otf",
+		"/usr/share/fonts/truetype/arphic/uming.ttc",
+		"/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
 
-		// Windows fonts (if running on Windows via Wine or dual boot)
-		"C:\\Windows\\Fonts\\msyh.ttc",  // Microsoft YaHei
-		"C:\\Windows\\Fonts\\simsun.ttc", // SimSun
+		// Windows individual fonts
+		"C:\\Windows\\Fonts\\msyh.ttf",
+		"C:\\Windows\\Fonts\\simsun.ttf",
+		"C:\\Windows\\Fonts\\arial.ttf",
 	}
+
+	// Add extracted fonts from system collections if they exist
+	// Users can extract these manually:
+	// - PingFang from /System/Library/Fonts/PingFang.ttc
+	// - STHeiti from /System/Library/Fonts/STHeiti Light.ttc
+
+	return paths
 }
 
 // FindAvailableFont searches for an available CJK font

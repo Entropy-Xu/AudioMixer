@@ -20,32 +20,34 @@ import (
 
 // App represents the GUI application
 type App struct {
-	fyneApp       fyne.App
-	window        fyne.Window
-	deviceManager *audio.DeviceManager
-	mixer         *audio.Mixer
-	configManager *config.ConfigManager
-	cfg           *config.Config
+	fyneApp        fyne.App
+	window         fyne.Window
+	deviceManager  *audio.DeviceManager
+	appCaptureManager *audio.ApplicationCaptureManager
+	mixer          *audio.Mixer
+	configManager  *config.ConfigManager
+	cfg            *config.Config
 
 	// UI elements
-	input1Select  *widget.Select
-	input2Select  *widget.Select
-	outputSelect  *widget.Select
-	input1Slider  *widget.Slider
-	input2Slider  *widget.Slider
-	masterSlider  *widget.Slider
-	input1Label   *widget.Label
-	input2Label   *widget.Label
-	masterLabel   *widget.Label
-	statusLabel   *widget.Label
-	startButton   *widget.Button
-	stopButton    *widget.Button
-	input1Meter   *widget.ProgressBar
-	input2Meter   *widget.ProgressBar
-	outputMeter   *widget.ProgressBar
-	latencyLabel  *widget.Label
-	fontSelect    *widget.Select
-	fontStatus    *widget.Label
+	input1Select        *widget.Select
+	input2Select        *widget.Select
+	appSelect           *widget.Select // Application audio selector
+	outputNameEntry     *widget.Entry  // Custom output device name entry
+	input1Slider        *widget.Slider
+	input2Slider      *widget.Slider
+	masterSlider      *widget.Slider
+	input1Label       *widget.Label
+	input2Label       *widget.Label
+	masterLabel       *widget.Label
+	statusLabel       *widget.Label
+	startButton       *widget.Button
+	stopButton        *widget.Button
+	input1Meter       *widget.ProgressBar
+	input2Meter       *widget.ProgressBar
+	outputMeter       *widget.ProgressBar
+	latencyLabel      *widget.Label
+	fontSelect        *widget.Select
+	fontStatus        *widget.Label
 
 	// State
 	isRunning bool
@@ -65,6 +67,14 @@ func NewApp() (*App, error) {
 	if err := a.deviceManager.Initialize(); err != nil {
 		return nil, fmt.Errorf("failed to initialize device manager: %w", err)
 	}
+
+	// Initialize application capture manager
+	appCapture, err := audio.NewApplicationCaptureManager()
+	if err != nil {
+		// 非致命错误，继续运行
+		fmt.Fprintf(os.Stderr, "Warning: Application capture not available: %v\n", err)
+	}
+	a.appCaptureManager = appCapture
 
 	// Initialize config manager
 	configManager, err := config.NewConfigManager()
@@ -144,30 +154,67 @@ func (a *App) buildUI() fyne.CanvasObject {
 func (a *App) buildDeviceSection() fyne.CanvasObject {
 	// Get devices
 	inputDevices, _ := a.deviceManager.GetInputDevices()
-	outputDevices, _ := a.deviceManager.GetOutputDevices()
 
-	// Build device names
+	// Get loopback devices for Input2 and Output
+	loopbackDevices, _ := audio.ListLoopbackDevices(a.deviceManager)
+
+	// Build Input 1 device names (microphone/line input)
 	inputNames := make([]string, len(inputDevices))
 	for i, dev := range inputDevices {
 		inputNames[i] = fmt.Sprintf("[%d] %s", dev.Index, dev.Name)
 	}
 
-	outputNames := make([]string, len(outputDevices))
-	for i, dev := range outputDevices {
-		outputNames[i] = fmt.Sprintf("[%d] %s", dev.Index, dev.Name)
+	// Build Input 2 options (loopback devices for system audio)
+	input2Names := []string{"<Auto Detect Loopback>"}
+	var input2Devices []*audio.DeviceInfo
+	for _, lb := range loopbackDevices {
+		// Convert loopback device to DeviceInfo for consistency
+		devInfo := &audio.DeviceInfo{
+			Name: lb.Name,
+		}
+		// Find the actual device index
+		allDevs, _ := a.deviceManager.ListDevices()
+		for _, d := range allDevs {
+			if d.Name == lb.Name {
+				devInfo.Index = d.Index
+				break
+			}
+		}
+		input2Devices = append(input2Devices, devInfo)
+		input2Names = append(input2Names, fmt.Sprintf("[Virtual] %s", lb.Name))
+	}
+
+	// Build Output options (loopback/virtual devices only)
+	outputNames := []string{"<Auto Detect Virtual Output>"}
+	var outputDevices []*audio.DeviceInfo
+	for _, lb := range loopbackDevices {
+		devInfo := &audio.DeviceInfo{
+			Name: lb.Name,
+		}
+		allDevs, _ := a.deviceManager.ListDevices()
+		for _, d := range allDevs {
+			if d.Name == lb.Name {
+				devInfo.Index = d.Index
+				break
+			}
+		}
+		outputDevices = append(outputDevices, devInfo)
+		outputNames = append(outputNames, fmt.Sprintf("[Virtual] %s", lb.Name))
 	}
 
 	// Helper function to find device name by index
 	findDeviceName := func(deviceIndex int, devices []*audio.DeviceInfo, names []string) string {
 		for i, dev := range devices {
 			if dev.Index == deviceIndex {
-				return names[i]
+				if i < len(names) {
+					return names[i]
+				}
 			}
 		}
 		return ""
 	}
 
-	// Input 1 select - create and set initial value
+	// Input 1 select (Microphone/Line Input)
 	a.input1Select = widget.NewSelect(inputNames, nil)
 	if a.cfg.Input1DeviceIndex >= 0 {
 		selectedName := findDeviceName(a.cfg.Input1DeviceIndex, inputDevices, inputNames)
@@ -175,54 +222,130 @@ func (a *App) buildDeviceSection() fyne.CanvasObject {
 			a.input1Select.SetSelected(selectedName)
 		}
 	}
-	// Set callback after initial value is set
 	a.input1Select.OnChanged = func(value string) {
 		if value != "" {
 			a.updateConfig()
 		}
 	}
 
-	// Input 2 select - create and set initial value
-	input2Options := append([]string{"<None>"}, inputNames...)
-	a.input2Select = widget.NewSelect(input2Options, nil)
+	// Input 2 select (System Audio via Loopback)
+	a.input2Select = widget.NewSelect(input2Names, nil)
 	if a.cfg.Input2DeviceIndex >= 0 {
-		selectedName := findDeviceName(a.cfg.Input2DeviceIndex, inputDevices, inputNames)
+		selectedName := findDeviceName(a.cfg.Input2DeviceIndex, input2Devices, input2Names[1:])
 		if selectedName != "" {
 			a.input2Select.SetSelected(selectedName)
+		} else {
+			a.input2Select.SetSelected("<Auto Detect Loopback>")
 		}
 	} else {
-		a.input2Select.SetSelected("<None>")
+		a.input2Select.SetSelected("<Auto Detect Loopback>")
 	}
-	// Set callback after initial value is set
 	a.input2Select.OnChanged = func(value string) {
 		if value != "" {
 			a.updateConfig()
 		}
 	}
 
-	// Output select - create and set initial value
-	a.outputSelect = widget.NewSelect(outputNames, nil)
-	if a.cfg.OutputDeviceIndex >= 0 {
-		selectedName := findDeviceName(a.cfg.OutputDeviceIndex, outputDevices, outputNames)
-		if selectedName != "" {
-			a.outputSelect.SetSelected(selectedName)
-		}
+	// Output select (Virtual Output Device) - removed, using custom name instead
+
+	// Custom output device name entry
+	a.outputNameEntry = widget.NewEntry()
+	a.outputNameEntry.SetPlaceHolder("输入虚拟设备名称，如: BlackHole 2ch")
+	if a.cfg.LoopbackDeviceName != "" {
+		a.outputNameEntry.SetText(a.cfg.LoopbackDeviceName)
+	} else {
+		a.outputNameEntry.SetText("BlackHole")
 	}
-	// Set callback after initial value is set
-	a.outputSelect.OnChanged = func(value string) {
-		if value != "" {
-			a.updateConfig()
-		}
+	a.outputNameEntry.OnChanged = func(value string) {
+		a.cfg.LoopbackDeviceName = value
+		a.updateConfig()
 	}
 
-	return container.NewVBox(
-		widget.NewLabel("Devices"),
+	// Detect button to find the device
+	detectButton := widget.NewButton("检测设备 (Detect)", func() {
+		if a.outputNameEntry.Text == "" {
+			a.statusLabel.SetText("请先输入设备名称")
+			return
+		}
+
+		// Try to find device by name
+		loopback, err := audio.GetLoopbackDeviceByName(a.deviceManager, a.outputNameEntry.Text)
+		if err != nil {
+			a.statusLabel.SetText(fmt.Sprintf("未找到设备: %v", err))
+		} else {
+			a.statusLabel.SetText(fmt.Sprintf("✓ 找到设备: %s", loopback.Name))
+		}
+	})
+
+	// Application selector (for capturing specific app audio)
+	var appSection *fyne.Container
+	if a.appCaptureManager != nil {
+		appNames := []string{"<使用虚拟设备方案>"}
+
+		// Get list of applications
+		apps, err := a.appCaptureManager.ListApplications()
+		if err == nil {
+			for _, app := range apps {
+				appNames = append(appNames, audio.GetFriendlyName(app.DisplayName))
+			}
+		}
+
+		a.appSelect = widget.NewSelect(appNames, func(selected string) {
+			// TODO: Implement application capture
+			if selected != "<使用虚拟设备方案>" {
+				a.statusLabel.SetText(fmt.Sprintf("注意: 应用音频捕获功能仍在开发中"))
+			}
+		})
+		a.appSelect.SetSelected("<使用虚拟设备方案>")
+
+		refreshButton := widget.NewButton("🔄 刷新", func() {
+			// Refresh application list
+			apps, err := a.appCaptureManager.ListApplications()
+			if err != nil {
+				a.statusLabel.SetText(fmt.Sprintf("刷新失败: %v", err))
+				return
+			}
+
+			newNames := []string{"<使用虚拟设备方案>"}
+			for _, app := range apps {
+				newNames = append(newNames, audio.GetFriendlyName(app.DisplayName))
+			}
+			a.appSelect.Options = newNames
+			a.appSelect.Refresh()
+			a.statusLabel.SetText(fmt.Sprintf("已刷新，找到 %d 个应用", len(apps)))
+		})
+
+		appSection = container.NewVBox(
+			widget.NewLabel("或者，捕获特定应用音频 (实验性):"),
+			container.NewBorder(nil, nil, nil, refreshButton, a.appSelect),
+		)
+	}
+
+	// Info label explaining the setup
+	infoText := "提示:\n" +
+		"• Input 1: 麦克风/线路输入\n" +
+		"• Input 2: 系统音频 (需要虚拟设备,如 BlackHole/VB-Cable)\n" +
+		"• Output: 输入虚拟设备名称 (混音后输出到该设备)\n" +
+		"• 常见设备名: BlackHole 2ch, CABLE-B Input, VB-Cable"
+	infoLabel := widget.NewLabel(infoText)
+
+	sections := []fyne.CanvasObject{
+		widget.NewLabel("设备配置 (Devices)"),
 		container.New(layout.NewFormLayout(),
-			widget.NewLabel("Input 1 (Mic):"), a.input1Select,
-			widget.NewLabel("Input 2 (App):"), a.input2Select,
-			widget.NewLabel("Output:"), a.outputSelect,
+			widget.NewLabel("Input 1 (麦克风):"), a.input1Select,
+			widget.NewLabel("Input 2 (系统音频):"), a.input2Select,
 		),
-	)
+		widget.NewLabel("Output (虚拟输出设备名称):"),
+		container.NewBorder(nil, nil, nil, detectButton, a.outputNameEntry),
+	}
+
+	if appSection != nil {
+		sections = append(sections, appSection)
+	}
+
+	sections = append(sections, infoLabel)
+
+	return container.NewVBox(sections...)
 }
 
 // buildVolumeSection creates volume control UI
@@ -393,21 +516,32 @@ func (a *App) buildFontSection() fyne.CanvasObject {
 // getFriendlyFontName extracts a friendly name from font path
 func getFriendlyFontName(path string) string {
 	switch path {
-	case "/System/Library/Fonts/PingFang.ttc":
-		return "PingFang (Recommended)"
-	case "/System/Library/Fonts/STHeiti Light.ttc":
-		return "STHeiti Light"
-	case "/System/Library/Fonts/Hiragino Sans GB.ttc":
-		return "Hiragino Sans GB"
-	case "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc":
+	case "/System/Library/Fonts/Supplemental/Arial Unicode.ttf":
+		return "Arial Unicode MS (Recommended)"
+	case "/Library/Fonts/Arial Unicode.ttf":
+		return "Arial Unicode MS"
+	case "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttf":
 		return "Noto Sans CJK"
-	case "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc":
-		return "Noto Sans CJK (OpenType)"
-	case "C:\\Windows\\Fonts\\msyh.ttc":
+	case "/usr/share/fonts/opentype/noto/NotoSansCJKsc-Regular.otf":
+		return "Noto Sans CJK SC (OpenType)"
+	case "C:\\Windows\\Fonts\\msyh.ttf":
 		return "Microsoft YaHei"
-	case "C:\\Windows\\Fonts\\simsun.ttc":
+	case "C:\\Windows\\Fonts\\simsun.ttf":
 		return "SimSun"
+	case "C:\\Windows\\Fonts\\arial.ttf":
+		return "Arial"
 	default:
+		// Check if it's a user font (likely custom installed CJK font)
+		if strings.Contains(path, "PingFangSC") {
+			return "PingFang SC (User Font)"
+		}
+		if strings.Contains(path, "SourceHanSans") {
+			return "Source Han Sans (User Font)"
+		}
+		if strings.Contains(path, "NotoSansCJK") {
+			return "Noto Sans CJK (User Font)"
+		}
+
 		// Extract filename
 		parts := strings.Split(path, "/")
 		if len(parts) > 0 {
@@ -438,33 +572,62 @@ func (a *App) startMixer() {
 	mixerConfig.Input1Gain = a.cfg.Input1Gain
 	mixerConfig.Input2Gain = a.cfg.Input2Gain
 	mixerConfig.MasterGain = a.cfg.MasterGain
+	mixerConfig.UseVirtualOutput = a.cfg.UseVirtualOutput
 
-	// Get device info
+	// Get Input 1 device (microphone/line input)
 	if a.cfg.Input1DeviceIndex >= 0 {
 		dev, err := a.deviceManager.GetDeviceByIndex(a.cfg.Input1DeviceIndex)
 		if err != nil {
-			a.statusLabel.SetText(fmt.Sprintf("Error: %v", err))
+			a.statusLabel.SetText(fmt.Sprintf("Error getting Input 1: %v", err))
 			return
 		}
 		mixerConfig.Input1Device = dev
+	} else {
+		// Use default input device
+		dev, err := a.deviceManager.GetDefaultInputDevice()
+		if err == nil {
+			mixerConfig.Input1Device = dev
+		}
 	}
 
+	// Get Input 2 device (system audio via loopback)
 	if a.cfg.Input2DeviceIndex >= 0 {
 		dev, err := a.deviceManager.GetDeviceByIndex(a.cfg.Input2DeviceIndex)
 		if err != nil {
-			a.statusLabel.SetText(fmt.Sprintf("Error: %v", err))
+			a.statusLabel.SetText(fmt.Sprintf("Error getting Input 2: %v", err))
 			return
 		}
 		mixerConfig.Input2Device = dev
-	}
-
-	if a.cfg.OutputDeviceIndex >= 0 {
-		dev, err := a.deviceManager.GetDeviceByIndex(a.cfg.OutputDeviceIndex)
+	} else {
+		// Auto-detect loopback device for system audio
+		loopback, err := audio.FindLoopbackDevice(a.deviceManager)
 		if err != nil {
-			a.statusLabel.SetText(fmt.Sprintf("Error: %v", err))
+			a.statusLabel.SetText(fmt.Sprintf("未找到虚拟设备! 请安装 BlackHole: %v", err))
 			return
 		}
-		mixerConfig.OutputDevice = dev
+		mixerConfig.Input2Device = loopback.Device
+		a.statusLabel.SetText(fmt.Sprintf("自动检测到虚拟设备: %s", loopback.Name))
+	}
+
+	// Get Output device (virtual device by custom name)
+	if a.cfg.LoopbackDeviceName != "" {
+		// Use custom device name
+		loopback, err := audio.GetLoopbackDeviceByName(a.deviceManager, a.cfg.LoopbackDeviceName)
+		if err != nil {
+			a.statusLabel.SetText(fmt.Sprintf("未找到设备 '%s': %v\n请检查设备名称或点击'检测设备'", a.cfg.LoopbackDeviceName, err))
+			return
+		}
+		mixerConfig.OutputDevice = loopback.Device
+		a.statusLabel.SetText(fmt.Sprintf("使用虚拟输出: %s", loopback.Name))
+	} else {
+		// Auto-detect virtual output device (fallback)
+		loopback, err := audio.FindLoopbackDevice(a.deviceManager)
+		if err != nil {
+			a.statusLabel.SetText(fmt.Sprintf("未找到虚拟输出设备! 请安装 BlackHole 或输入设备名称: %v", err))
+			return
+		}
+		mixerConfig.OutputDevice = loopback.Device
+		a.statusLabel.SetText(fmt.Sprintf("自动检测到虚拟输出: %s", loopback.Name))
 	}
 
 	// Create mixer
@@ -484,7 +647,7 @@ func (a *App) startMixer() {
 	a.isRunning = true
 	a.startButton.Disable()
 	a.stopButton.Enable()
-	a.statusLabel.SetText("Mixer running")
+	a.statusLabel.SetText("混音器运行中 (Mixer running)")
 
 	// Start meter update loop
 	go a.updateMeters()
@@ -566,11 +729,8 @@ func (a *App) updateConfig() {
 		}
 	}
 
-	if a.outputSelect != nil && a.outputSelect.Selected != "" {
-		var idx int
-		fmt.Sscanf(a.outputSelect.Selected, "[%d]", &idx)
-		a.cfg.OutputDeviceIndex = idx
-	}
+	// Output device is now configured via custom name (outputNameEntry)
+	// LoopbackDeviceName is already updated in outputNameEntry.OnChanged
 }
 
 // cleanup performs cleanup when closing the app

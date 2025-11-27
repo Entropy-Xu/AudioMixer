@@ -22,26 +22,28 @@ const (
 
 // MixerConfig holds configuration for the audio mixer
 type MixerConfig struct {
-	SampleRate     float64
-	BufferSize     int
-	Channels       int
-	Input1Device   *portaudio.DeviceInfo // Microphone
-	Input2Device   *portaudio.DeviceInfo // Application audio
-	OutputDevice   *portaudio.DeviceInfo
-	Input1Gain     float32 // 0.0 to 2.0 (0% to 200%)
-	Input2Gain     float32
-	MasterGain     float32
+	SampleRate       float64
+	BufferSize       int
+	Channels         int
+	Input1Device     *portaudio.DeviceInfo // Microphone/Line input
+	Input2Device     *portaudio.DeviceInfo // System audio (from loopback device)
+	OutputDevice     *portaudio.DeviceInfo // Virtual output device (BlackHole/VB-Cable)
+	UseVirtualOutput bool                  // If true, output goes to virtual device instead of speakers
+	Input1Gain       float32               // 0.0 to 2.0 (0% to 200%)
+	Input2Gain       float32
+	MasterGain       float32
 }
 
 // DefaultMixerConfig returns a default mixer configuration
 func DefaultMixerConfig() *MixerConfig {
 	return &MixerConfig{
-		SampleRate:  DefaultSampleRate,
-		BufferSize:  DefaultBufferSize,
-		Channels:    DefaultChannels,
-		Input1Gain:  1.0,
-		Input2Gain:  1.0,
-		MasterGain:  1.0,
+		SampleRate:       DefaultSampleRate,
+		BufferSize:       DefaultBufferSize,
+		Channels:         DefaultChannels,
+		UseVirtualOutput: true, // Default to virtual output
+		Input1Gain:       1.0,
+		Input2Gain:       1.0,
+		MasterGain:       1.0,
 	}
 }
 
@@ -122,10 +124,19 @@ func (m *Mixer) Start() error {
 
 	// Open input stream 1 (microphone)
 	if m.config.Input1Device != nil {
+		// Use the minimum of configured channels and device's max input channels
+		input1Channels := m.config.Channels
+		if m.config.Input1Device.MaxInputChannels < input1Channels {
+			input1Channels = m.config.Input1Device.MaxInputChannels
+		}
+		if input1Channels > MaxChannels {
+			input1Channels = MaxChannels
+		}
+
 		input1Params := portaudio.StreamParameters{
 			Input: portaudio.StreamDeviceParameters{
 				Device:   m.config.Input1Device,
-				Channels: m.config.Channels,
+				Channels: input1Channels,
 				Latency:  m.config.Input1Device.DefaultLowInputLatency,
 			},
 			SampleRate:      m.config.SampleRate,
@@ -146,10 +157,19 @@ func (m *Mixer) Start() error {
 
 	// Open input stream 2 (application audio)
 	if m.config.Input2Device != nil {
+		// Use the minimum of configured channels and device's max input channels
+		input2Channels := m.config.Channels
+		if m.config.Input2Device.MaxInputChannels < input2Channels {
+			input2Channels = m.config.Input2Device.MaxInputChannels
+		}
+		if input2Channels > MaxChannels {
+			input2Channels = MaxChannels
+		}
+
 		input2Params := portaudio.StreamParameters{
 			Input: portaudio.StreamDeviceParameters{
 				Device:   m.config.Input2Device,
-				Channels: m.config.Channels,
+				Channels: input2Channels,
 				Latency:  m.config.Input2Device.DefaultLowInputLatency,
 			},
 			SampleRate:      m.config.SampleRate,
@@ -176,10 +196,19 @@ func (m *Mixer) Start() error {
 
 	// Open output stream
 	if m.config.OutputDevice != nil {
+		// Use the minimum of configured channels and device's max output channels
+		outputChannels := m.config.Channels
+		if m.config.OutputDevice.MaxOutputChannels < outputChannels {
+			outputChannels = m.config.OutputDevice.MaxOutputChannels
+		}
+		if outputChannels > MaxChannels {
+			outputChannels = MaxChannels
+		}
+
 		outputParams := portaudio.StreamParameters{
 			Output: portaudio.StreamDeviceParameters{
 				Device:   m.config.OutputDevice,
-				Channels: m.config.Channels,
+				Channels: outputChannels,
 				Latency:  m.config.OutputDevice.DefaultLowOutputLatency,
 			},
 			SampleRate:      m.config.SampleRate,
