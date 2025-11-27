@@ -72,10 +72,9 @@ func (dm *DeviceManager) ListDevices() ([]*DeviceInfo, error) {
 
 	var deviceList []*DeviceInfo
 	for i, dev := range devices {
-		hostAPI, _ := portaudio.HostApi(dev.HostApi)
 		hostAPIName := "Unknown"
-		if hostAPI != nil {
-			hostAPIName = hostAPI.Name
+		if dev.HostApi != nil {
+			hostAPIName = dev.HostApi.Name
 		}
 
 		info := &DeviceInfo{
