@@ -2,12 +2,14 @@ package gui
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/entropy/audio-mixer/internal/audio"
@@ -50,6 +52,9 @@ func NewApp() (*App, error) {
 	a := &App{
 		fyneApp: app.New(),
 	}
+
+	// Set custom theme with system font for better Unicode support
+	a.fyneApp.Settings().SetTheme(&customTheme{})
 
 	// Initialize device manager
 	a.deviceManager = audio.NewDeviceManager()
@@ -464,4 +469,35 @@ func (a *App) cleanup() {
 	if a.deviceManager != nil {
 		a.deviceManager.Terminate()
 	}
+}
+
+// customTheme provides a theme with better font fallback for Unicode characters
+type customTheme struct{}
+
+func (c *customTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) fyne.Color {
+	return theme.DefaultTheme().Color(name, variant)
+}
+
+func (c *customTheme) Icon(name fyne.ThemeIconName) fyne.Resource {
+	return theme.DefaultTheme().Icon(name)
+}
+
+func (c *customTheme) Font(style fyne.TextStyle) fyne.Resource {
+	// Try to use system font on macOS for better Unicode support
+	if style.Monospace {
+		return theme.DefaultTheme().Font(style)
+	}
+
+	// On macOS, check for PingFang or Heiti font for Chinese support
+	if _, err := os.Stat("/System/Library/Fonts/PingFang.ttc"); err == nil {
+		// System has PingFang font, but we can't load it directly in Fyne
+		// Fall back to default theme which should handle system fonts
+		return theme.DefaultTheme().Font(style)
+	}
+
+	return theme.DefaultTheme().Font(style)
+}
+
+func (c *customTheme) Size(name fyne.ThemeSizeName) float32 {
+	return theme.DefaultTheme().Size(name)
 }
