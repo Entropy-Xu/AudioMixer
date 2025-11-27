@@ -16,6 +16,7 @@
 
 - **语言**: Go 1.21+
 - **音频库**: PortAudio (github.com/gordonklaus/portaudio)
+- **GUI框架**: Fyne v2 (跨平台图形界面)
 - **架构**: 低延迟实时音频处理,零GC暂停设计
 
 ## 系统要求
@@ -72,7 +73,26 @@ go build -o audio-mixer .
 
 ## 使用指南
 
-### 基本使用
+### GUI模式 (推荐)
+
+1. 构建GUI版本:
+```bash
+go build -o audio-mixer-gui ./cmd/gui
+```
+
+2. 运行GUI:
+```bash
+./audio-mixer-gui
+```
+
+3. 在图形界面中:
+   - 从下拉菜单选择输入/输出设备
+   - 使用滑块调节音量(0-200%)
+   - 点击"Start Mixer"开始混音
+   - 实时查看音频电平表
+   - 点击"Stop Mixer"停止
+
+### CLI模式
 
 1. 启动程序:
 ```bash
@@ -278,9 +298,9 @@ if output[i] > 0.9 {
 - [x] 配置管理
 - [x] CLI界面
 
-### Phase 2 (规划中)
-- [ ] GUI界面(Wails或Fyne)
-- [ ] 可视化音频电平(VU表)
+### Phase 2 ✅ (已完成)
+- [x] GUI界面(Fyne)
+- [x] 可视化音频电平(实时进度条)
 - [ ] 音频效果器(EQ、压缩器)
 - [ ] 录音功能
 - [ ] 预设管理
