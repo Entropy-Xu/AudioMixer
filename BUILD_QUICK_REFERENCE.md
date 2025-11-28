@@ -106,6 +106,41 @@ make help
 
 ## 🌍 跨平台编译
 
+### 从 macOS 或 Linux 编译 Windows 版本
+
+**前置要求**: 安装 mingw-w64
+
+```bash
+# macOS
+brew install mingw-w64
+
+# Ubuntu/Debian
+sudo apt-get install gcc-mingw-w64
+
+# Fedora/RHEL
+sudo dnf install mingw64-gcc
+```
+
+**使用脚本（推荐）**:
+```bash
+./build-cross-windows.sh
+```
+
+**使用 Makefile**:
+```bash
+make cross-windows
+```
+
+**输出**: `build/` 目录
+- `audio-mixer-windows-amd64.exe` - CLI 版本
+- `audio-mixer-gui-windows-amd64.exe` - GUI 版本（含 WASAPI）
+
+✅ 包含完整的 WASAPI 支持
+✅ 隐藏控制台窗口
+✅ 优化的二进制文件
+
+---
+
 ### 从任何平台构建所有平台版本
 
 **构建所有平台的 CLI 版本**:
@@ -124,6 +159,8 @@ make build-all-gui
 - `audio-mixer-linux-amd64` - Linux x64
 - `audio-mixer-windows-amd64.exe` - Windows x64 (含 WASAPI)
 
+⚠️ **注意**: `build-all-gui` 在非 Windows 平台上编译 Windows 版本需要 mingw-w64
+
 ---
 
 ## 📋 常用命令速查
@@ -133,7 +170,7 @@ make build-all-gui
 | **快速构建** | `.\build.ps1` | `./build.sh` | `make gui` |
 | **调试版本** | `.\build.ps1 -Debug` | `./build.sh` | `make build` |
 | **发布版本** | `.\build.ps1 -Release` | `./build.sh` | `make build-release` |
-| **仅 Windows** | `.\build.ps1` | - | `make build-windows` |
+| **仅 Windows** | `.\build.ps1` | `./build-cross-windows.sh` | `make cross-windows` |
 | **所有平台** | - | - | `make build-all-gui` |
 | **清理** | `Remove-Item *.exe` | `make clean` | `make clean` |
 

@@ -1,3 +1,6 @@
+//go:build cgo
+// +build cgo
+
 package audio
 
 import (
@@ -10,14 +13,14 @@ import (
 
 // DeviceInfo holds information about an audio device
 type DeviceInfo struct {
-	Index              int
-	Name               string
-	MaxInputChannels   int
-	MaxOutputChannels  int
-	DefaultSampleRate  float64
-	IsDefaultInput     bool
-	IsDefaultOutput    bool
-	HostAPI            string
+	Index             int
+	Name              string
+	MaxInputChannels  int
+	MaxOutputChannels int
+	DefaultSampleRate float64
+	IsDefaultInput    bool
+	IsDefaultOutput   bool
+	HostAPI           string
 }
 
 // DeviceManager handles audio device enumeration and management
@@ -87,14 +90,14 @@ func (dm *DeviceManager) ListDevices() ([]*DeviceInfo, error) {
 		}
 
 		info := &DeviceInfo{
-			Index:              i,
-			Name:               deviceName,
-			MaxInputChannels:   dev.MaxInputChannels,
-			MaxOutputChannels:  dev.MaxOutputChannels,
-			DefaultSampleRate:  dev.DefaultSampleRate,
-			IsDefaultInput:     defaultInput != nil && dev == defaultInput,
-			IsDefaultOutput:    defaultOutput != nil && dev == defaultOutput,
-			HostAPI:            hostAPIName,
+			Index:             i,
+			Name:              deviceName,
+			MaxInputChannels:  dev.MaxInputChannels,
+			MaxOutputChannels: dev.MaxOutputChannels,
+			DefaultSampleRate: dev.DefaultSampleRate,
+			IsDefaultInput:    defaultInput != nil && dev == defaultInput,
+			IsDefaultOutput:   defaultOutput != nil && dev == defaultOutput,
+			HostAPI:           hostAPIName,
 		}
 		deviceList = append(deviceList, info)
 	}

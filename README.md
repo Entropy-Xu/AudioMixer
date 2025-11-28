@@ -73,7 +73,9 @@
 make gui
 ```
 
-📖 **详细构建指南**: [BUILD_QUICK_REFERENCE.md](BUILD_QUICK_REFERENCE.md)
+📖 **详细构建指南**: 
+- [BUILD_QUICK_REFERENCE.md](BUILD_QUICK_REFERENCE.md) - 快速构建参考
+- [CROSS_COMPILE_WINDOWS.md](CROSS_COMPILE_WINDOWS.md) - 跨平台编译 Windows 版本
 
 ---
 

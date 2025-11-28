@@ -33,9 +33,9 @@ func newPlatformCaptureImpl() (applicationCaptureImpl, error) {
 	// 初始化 COM
 	err := ole.CoInitializeEx(0, ole.COINIT_APARTMENTTHREADED)
 	if err != nil {
-		// 如果已经初始化，继续
+		// 如果已经初始化（S_FALSE = 0x00000001），继续
 		oleErr, ok := err.(*ole.OleError)
-		if !ok || oleErr.Code() != ole.S_FALSE {
+		if !ok || oleErr.Code() != 0x00000001 {
 			return nil, fmt.Errorf("failed to initialize COM: %w", err)
 		}
 	}

@@ -1,4 +1,4 @@
-.PHONY: build run clean test install deps help gui build-windows build-windows-debug
+.PHONY: build run clean test install deps help gui build-windows build-windows-debug cross-windows
 
 # Variables
 BINARY_NAME=audio-mixer
@@ -45,6 +45,32 @@ build-windows-debug:
 	@mkdir -p $(BUILD_DIR)
 	GOOS=windows GOARCH=amd64 CGO_ENABLED=1 go build -o $(BUILD_DIR)/$(GUI_BINARY_NAME)-windows-amd64-debug.exe $(GUI_MAIN_DIR)
 	@echo "Windows debug build complete: $(BUILD_DIR)/$(GUI_BINARY_NAME)-windows-amd64-debug.exe"
+
+# Cross-compile Windows from macOS/Linux
+cross-windows:
+	@echo "Cross-compiling Windows executables from macOS/Linux..."
+	@if ! command -v x86_64-w64-mingw32-gcc >/dev/null 2>&1; then \
+		echo "❌ Error: mingw-w64 not found"; \
+		echo ""; \
+		echo "Install with:"; \
+		if [ "$$(uname)" = "Darwin" ]; then \
+			echo "  brew install mingw-w64"; \
+		else \
+			echo "  sudo apt-get install gcc-mingw-w64  # Ubuntu/Debian"; \
+		fi; \
+		echo ""; \
+		exit 1; \
+	fi
+	@mkdir -p $(BUILD_DIR)
+	@echo "Building CLI..."
+	GOOS=windows GOARCH=amd64 CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ \
+		go build -ldflags="-s -w" -o $(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe $(MAIN_FILE)
+	@echo "Building GUI (with WASAPI)..."
+	GOOS=windows GOARCH=amd64 CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ \
+		go build -ldflags="-H windowsgui -s -w" -o $(BUILD_DIR)/$(GUI_BINARY_NAME)-windows-amd64.exe $(GUI_MAIN_DIR)
+	@echo "✓ Cross-compilation complete!"
+	@echo "  $(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe"
+	@echo "  $(BUILD_DIR)/$(GUI_BINARY_NAME)-windows-amd64.exe (with WASAPI)"
 
 # Run the application
 run: build
@@ -150,6 +176,7 @@ help:
 	@echo "Windows builds:"
 	@echo "  build-windows      - Build Windows version with WASAPI support"
 	@echo "  build-windows-debug - Build Windows debug version (with console)"
+	@echo "  cross-windows      - Cross-compile Windows from macOS/Linux (requires mingw-w64)"
 	@echo ""
 	@echo "Cross-platform builds:"
 	@echo "  build-all          - Build CLI for all platforms"

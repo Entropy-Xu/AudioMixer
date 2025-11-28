@@ -1,9 +1,5 @@
 package audio
 
-import (
-	"fmt"
-)
-
 // ApplicationInfo 应用程序音频信息
 type ApplicationInfo struct {
 	ProcessID   uint32  // 进程ID

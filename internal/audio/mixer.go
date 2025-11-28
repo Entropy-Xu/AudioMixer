@@ -1,3 +1,6 @@
+//go:build cgo
+// +build cgo
+
 package audio
 
 import (
@@ -12,12 +15,12 @@ import (
 
 const (
 	// Audio configuration constants
-	DefaultSampleRate  = 48000
-	DefaultBufferSize  = 512
-	DefaultChannels    = 2
-	MaxChannels        = 2
-	MinLatencyMs       = 10
-	MaxLatencyMs       = 100
+	DefaultSampleRate = 48000
+	DefaultBufferSize = 512
+	DefaultChannels   = 2
+	MaxChannels       = 2
+	MinLatencyMs      = 10
+	MaxLatencyMs      = 100
 )
 
 // MixerConfig holds configuration for the audio mixer
@@ -57,23 +60,23 @@ type Mixer struct {
 	input1Buffer *AudioBuffer
 	input2Buffer *AudioBuffer
 
-	bufferPool   *BufferPool
+	bufferPool *BufferPool
 
 	// Atomic gains for thread-safe volume control
-	input1Gain   atomic.Value // float32
-	input2Gain   atomic.Value // float32
-	masterGain   atomic.Value // float32
+	input1Gain atomic.Value // float32
+	input2Gain atomic.Value // float32
+	masterGain atomic.Value // float32
 
 	// Metrics
-	latency      atomic.Value // time.Duration
-	input1Level  atomic.Value // float32
-	input2Level  atomic.Value // float32
-	outputLevel  atomic.Value // float32
+	latency     atomic.Value // time.Duration
+	input1Level atomic.Value // float32
+	input2Level atomic.Value // float32
+	outputLevel atomic.Value // float32
 
-	running      atomic.Bool
-	mu           sync.RWMutex
-	stopCh       chan struct{}
-	wg           sync.WaitGroup
+	running atomic.Bool
+	mu      sync.RWMutex
+	stopCh  chan struct{}
+	wg      sync.WaitGroup
 }
 
 // NewMixer creates a new audio mixer
